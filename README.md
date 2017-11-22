@@ -1,5 +1,5 @@
 # SPTools
-##Tools for analyzing Spliceosome Profiling data
+## Tools for analyzing Spliceosome Profiling data
 
 Basic usage (Note: requires display environment, e.g. XQuarts on Mac or %matplotlib inline in Jupyter notebooks):
 '''
