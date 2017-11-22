@@ -1,6 +1,8 @@
 import re
 import collections
 import json
+import os
+import sys
 
 ######################################################################################################
 ## Build a transcript dictionary with all information from a gff3 file                              ##
@@ -248,33 +250,25 @@ def collapse_ss_dict(splice_site_dict):
                 ss_by_gene[gene].update(set(zip(sites[0],sites[1])))
     return ss_by_gene
 
-def read_kallisto_abundance(abundance_file):
-    kallisto_dict = {}
-    #kallisto_dict[transcript] = [length, eff_length, est_counts, tpm]
-    with open(abundance_file, 'r') as fin:
-        for line in fin:
-            if line.startswith('target'):
-                continue
-            columns = line.split('\t')
-            kallisto_dict[columns[0]] = [int(columns[1]), float(columns[2]), float(columns[3]), float(columns[4].strip())]
-    return kallisto_dict
-
 def find_organism_files(organism):
     ''' usage: organism, gff3, fa_dict, bowtie_index = find_organism_files(organism)'''
+    
+    script_path = os.path.dirname(os.path.realpath(sys.argv[0]))
+    print script_path
     if 'crypto' in organism:
-        gff3 = '/home/jordan/GENOMES/CNA3_FINAL_CALLGENES_1_gobs.gff3'
-        fa = '/home/jordan/GENOMES/H99_fa.json'
-        bowtie_index = '/home/jordan/GENOMES/Crypto_for_gobs'
+        gff3 = script_path+'/Genomes/CNA3_all_transcripts.gff3'
+        fa = script_path+'/Genomes/H99_fa.json'
+        bowtie_index = script_path+'/Genomes/Crypto_for_gobs'
         organism = None
     elif 'pombe' in organism:
-        gff3 = '/home/jordan/GENOMES/POMBE/schizosaccharomyces_pombe.chr.gff3'
-        fa = '/home/jordan/GENOMES/POMBE/Sp_fasta_dict.json'
-        bowtie_index = '/home/jordan/GENOMES/POMBE/Spombe'
+        gff3 = script_path+'/Genomes/schizosaccharomyces_pombe.chr.gff3'
+        fa = script_path+'/Genomes/Sp_fasta_dict.json'
+        bowtie_index = script_path+'/Genomes/Spombe'
         organism = 'pombe'
     elif 'cerev' in organism:
-        gff3 = '/home/jordan/GENOMES/S288C/saccharomyces_cerevisiae_R64-2-1_20150113.gff3'
-        fa = '/home/jordan/GENOMES/S288C/S288C_fasta_dict.json'
-        bowtie_index = '/home/jordan/GENOMES/S288C/S288C'
+        gff3 = script_path+'/Genomes/saccharomyces_cerevisiae_R64-2-1_20150113.gff3'
+        fa = script_path+'/Genomes/S288C_fasta_dict.json'
+        bowtie_index = script_path+'/Genomes/S288C'
         organism = None
         
     with open(fa) as f:
