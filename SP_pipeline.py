@@ -1,21 +1,12 @@
 import sys
-<<<<<<< HEAD
 import os
 script_path = os.path.dirname(os.path.realpath(__file__)).split('SPTools')[0]
 sys.path.append(script_path)
-=======
-sys.path.append('/home/jordan/CodeBase/RNA-is-awesome/')
-sys.path.append('/home/jordan/RNA-is-awesome/')
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 import SPTools as SP
 import json
 import numpy as np
 import pandas as pd
 from subprocess import call
-<<<<<<< HEAD
-=======
-import os
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 
 def peak_junction_analysis(peak_df, junc_beds, gff3, fa_dict, organism, base_dir, name):
     # Load in junctions
@@ -76,7 +67,6 @@ def peak_branch_analysis(peak_df, branch_bams, gff3, fa_dict, organism, base_dir
     
     return peaks_w_branch
 
-<<<<<<< HEAD
 def peaks_only(CP_out, quant_bams, base_dir, name, gff3, fa_dict, organism):
     peak_df = SP.peak_to_seq_pipeline(CP_out[2], CP_out[0], CP_out[1], gff3, fa_dict, name=name+'_CP_peaks')
     peak_df.to_csv(base_dir+name+'_all_peaks.csv')
@@ -88,14 +78,11 @@ def peaks_only(CP_out, quant_bams, base_dir, name, gff3, fa_dict, organism):
     
     scatter = SP.SP_pipeline_scatters(quant_df, base_dir, name)
 
-=======
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 def main():
     '''Usage: run SP_pipeline.py config_file untagged_sample_name organism
     config file : file that lists all branch, junction and peak files
     untagged_sample_name : prefix for untagged sample
     organism : pombe, crypto or cerevisiae'''
-<<<<<<< HEAD
     peak_bams = []
     quant_bams = {}
     junc_beds = []
@@ -127,35 +114,11 @@ def main():
         print "Untagged sample: "+untagged
         
     ## Set up output names and directory
-=======
-    junc_beds = []
-    branch_bams = []
-    CP_out = []
-    CP_untagged = None
-    quant_bams = {}
-    
-    # Read configuration file
-    with open(sys.argv[1], 'r') as config:
-        for line in config:
-            if 'junctions.bed' in line.lower():
-                junc_beds.append(line.strip())
-            elif 'branch' in line.lower():
-                branch_bams.append(line.strip())
-            elif sys.argv[2] in line:
-                CP_untagged = line.strip()
-            elif 'changepoint' in line.lower() or 'peak' in line.lower():
-                CP_out.append(line.strip())
-            #bam files for quantitation should be file,quant,A1
-            elif 'quant' in line:
-                quant_bams[line.split(',')[-1].strip()] = line.split(',')[0]
-
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     name = sys.argv[1].split('/')[-1].split('_config')[0]
     base_dir = sys.argv[1].split(name)[0]
     if base_dir == '': base_dir = './'
     print "Output file location and prefix: "+base_dir+name
     
-<<<<<<< HEAD
     ## Next run changepoint peak picking tools
     bg_dict = SP.make_bg_files(peak_bams+[untagged], organism)
     print "\n5' bedgraph files created:"
@@ -237,113 +200,9 @@ def main():
     
     for file in [x for x in os.listdir(base_dir) if x.endswith('pickle')]:
         os.remove(file)
-=======
-    print "\nJunction bed files"
-    print junc_beds
-    print "\nBranch bam files"
-    
-    if len(branch_bams) == 2:
-        print branch_bams
-        use_branches = True
-    elif len(branch_bams) == 0:
-        print "No data for branches, continuing with only junctions"
-        use_branches = False
-    
-    print "\nUntagged peaks"
-    print CP_untagged
-    print "\nChangepoint peaks"
-    print CP_out
-    print ''
-    
-    if CP_untagged is None:
-        print "\n Error: no untagged file indicated"
-        return None
-    
-    organism = sys.argv[3]
-    organism, gff3, fa_dict, bowtie_index = SP.find_organism_files(organism)
-    
-    #### Generate peak df
-    if name+'_peaks_w_branch.csv' not in os.listdir(base_dir) or name+'_peaks_w_junc.csv' not in os.listdir(base_dir):
-        if name+'_all_peaks.pickle' not in os.listdir(base_dir):
-            peak_df = SP.peak_to_seq_pipeline(CP_untagged, CP_out[0], CP_out[1], gff3, fa_dict, name=name+'_CP_peaks')
-            peak_df.to_pickle(base_dir+name+'_all_peaks.pickle')
-        else:
-            peak_df = pd.read_pickle(base_dir+name+'_all_peaks.pickle')
-    
-    #### Junction to peak comparison
-    if name+'_peaks_w_junc.csv' not in os.listdir(base_dir):
-        print "Generating peaks vs. junctions dataframe..."
-        peaks_w_junc = peak_junction_analysis(peak_df, junc_beds, gff3, fa_dict, organism, base_dir, name)
-        
-    else: 
-        peaks_w_junc = pd.read_pickle(base_dir+name+'_peaks_w_junc.pickle')
-        print "Peaks vs. junction dataframe already exists"
-    
-    
-    #### Branch to peak comparison
-    if use_branches is True:
-        if name+'_peaks_w_branch.csv' not in os.listdir(base_dir):
-            print "Generating peaks vs. branches dataframe..."
-            peaks_w_branch = peak_branch_analysis(peak_df, branch_bams, gff3, fa_dict, organism, base_dir, name)
-        else: 
-            peaks_w_branch = pd.read_pickle(base_dir+name+'_peaks_w_branch.pickle')
-            print "Peaks vs. branches dataframe already exists"
-    
-    #### Clean up dataframe for quantitation
-    if name+'_quantitation.csv' not in os.listdir(base_dir):
-        quant_df, lariat_df = SP.make_quant_df(peaks_w_junc, peaks_w_branch, gff3, fa_dict, organism=organism)
-        quant_df = SP.find_score_branches_ppy(quant_df, peaks_w_branch, fa_dict)
-        print "Counting reads in transcripts and at peaks..."
-        quant_df = SP.quantitate_junction_df(quant_bams, quant_df, gff3, organism=organism)
-        
-        quant_df.to_pickle(base_dir+name+'_quantitation.pickle')
-        quant_df.to_csv(base_dir+name+'_quantitation.csv')
-        lariat_df.to_pickle(base_dir+name+'_lariats.pickle')
-        lariat_df.to_csv(base_dir+name+'_lariats.csv')
-        
-        scatter = SP.SP_pipeline_scatters(quant_df, base_dir, name)
-    
-    else:
-        quant_df = pd.read_pickle(base_dir+name+'_quantitation.pickle')
-        scatter = SP.SP_pipeline_scatters(quant_df, base_dir, name)
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     
     print "\n****Finished****"
 
 if __name__ == "__main__":
     main()
-<<<<<<< HEAD
-=======
-    
-def peaks_only(config_file, untagged, organism):
-    CP_out = []
-    quant_bams = {}
-    with open(config_file, 'r') as config:
-        for line in config:
-            if untagged in line:
-                CP_untagged = line.strip()
-            elif 'changepoint' in line.lower() or 'peak' in line.lower():
-                CP_out.append(line.strip())
-            #bam files for quantitation should be file,quant,A1
-            elif 'quant' in line:
-                quant_bams[line.split(',')[-1].strip()] = line.split(',')[0]
-
-    name = config_file.split('/')[-1].split('_config')[0]
-    base_dir = config_file.split(name)[0]
-    if base_dir == '': base_dir = './'
-    print "Output file location and prefix: "+base_dir+name
-    
-    organism, gff3, fa_dict, bowtie_index = SP.find_organism_files(organism)
-    
-    peak_df = SP.peak_to_seq_pipeline(CP_untagged, CP_out[0], CP_out[1], gff3, fa_dict, name=name+'_CP_peaks')
-    peak_df.to_pickle(base_dir+name+'_all_peaks.pickle')
-    
-    quant_df = SP.quant_from_peak_df(peak_df, gff3, fa_dict, organism=organism)
-    quant_df = SP.quantitate_junction_df(quant_bams, quant_df, gff3, organism=organism)
-    
-    quant_df.to_pickle(base_dir+name+'_quantitation.pickle')
-    quant_df.to_csv(base_dir+name+'_quantitation.csv')
-    
-    scatter = SP.SP_pipeline_scatters(quant_df, base_dir, name)
->>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     
