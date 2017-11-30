@@ -1,13 +1,29 @@
+<<<<<<< HEAD
 import sys
 import os
 script_path = os.path.dirname(os.path.realpath(__file__)).split('SPTools')[0]
 sys.path.append(script_path)
 import SPTools as SP
+=======
+__author__ = 'jordanburke'
+
+
+''' These are tools to interpret and filter the output of the ChangePoints peak picking method developed by Jessica Li and Daria Merkurjev.
+'''
+
+import sys
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 import pandas as pd
 import random
 import re
 import numpy as np
 from scipy import stats
+<<<<<<< HEAD
+=======
+sys.path.append('/home/jordan/CodeBase/RNA-is-awesome/')
+sys.path.append('/home/jordan/RNA-is-awesome/')
+import SPTools as SP
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 from math import log
 from matplotlib import pyplot as plt
 import pysam
@@ -143,6 +159,10 @@ def CP_compare_reps(untagged, tagged1, tagged2):
                 if tx not in untagged or peak not in zip(*untagged[tx])[0]:
                     new_peak_dict[tx].append([peak,peak_height,strand])
                     peak_count += 1
+<<<<<<< HEAD
+=======
+    print peak_count
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     return new_peak_dict
 
 #Function to check peaks against annotation
@@ -154,6 +174,10 @@ def CP_compare_to_annotation(peaks, ss_dict, transcript_dict):
     peak_count = 0
     for tx, peak_list in peaks.iteritems():
         peak_count += len(peak_list)   
+<<<<<<< HEAD
+=======
+    print peak_count
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     compare_df = pd.DataFrame(index = range(peak_count+1), columns=['transcript','chromosome','strand','position','height','type'])
     n=0
     for tx, info in ss_dict.iteritems():
@@ -197,6 +221,13 @@ def CP_compare_to_annotation(peaks, ss_dict, transcript_dict):
                         print peak_count
                         print len(info)
                     n+=1
+<<<<<<< HEAD
+=======
+    print "5prime annotated sites: "+str(five_count)
+    print "3prime annotated sites: "+str(three_count)
+    print "Unpredicted peaks: "+str(other_count)
+    print "Unpredicted peaks in introns: "+str(intronic_count)
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     compare_df.dropna(how='all',inplace=True)
     return compare_df
 
@@ -226,6 +257,13 @@ def collapse_unpredicted_peaks(df):
                             break
                         else:
                             continue
+<<<<<<< HEAD
+=======
+    #print "Number of unpredicted peaks after condensing:"
+    #print len(df[df['type'].isin(['other','intronic'])])
+    #print "Number of intronic peaks after condensing:"
+    #print len(df[df['type'] == 'intronic'])
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     df.reset_index(inplace=True)
     return df
 
@@ -269,8 +307,20 @@ def peak_to_seq_pipeline(untagged_peak_file, tagged1_peak_file, tagged2_peak_fil
     else: organism = None
         
     transcript_dict = SP.build_transcript_dict(gff3, organism=organism)
+<<<<<<< HEAD
     untagged = CP_peaks_by_gene(untagged_peak_file, transcript_dict, cutoff=cutoff)
     tagged1 = CP_peaks_by_gene(tagged1_peak_file, transcript_dict, cutoff=cutoff)
+=======
+    print "Finding peaks in transcripts..."
+    
+    print untagged_peak_file
+    untagged = CP_peaks_by_gene(untagged_peak_file, transcript_dict, cutoff=cutoff)
+    
+    print tagged1_peak_file
+    tagged1 = CP_peaks_by_gene(tagged1_peak_file, transcript_dict, cutoff=cutoff)
+    
+    print tagged2_peak_file
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     tagged2 = CP_peaks_by_gene(tagged2_peak_file, transcript_dict, cutoff=cutoff)
     
     print "Comparing peaks between replicates..."
@@ -301,11 +351,21 @@ def peak_to_seq_pipeline(untagged_peak_file, tagged1_peak_file, tagged2_peak_fil
             line = '\t'.join(line_list)
             fout.write(line)
     
+<<<<<<< HEAD
+=======
+    print "Completed"
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     return peak_seq_df
 
 
 ### ****Cross-validation**** ###
 def compare_peak_junc_df(peak_df, junc_df, organism = None):
+<<<<<<< HEAD
+=======
+    print str(len(peak_df))+' peaks'
+    print str(len(junc_df))+' junctions'
+    
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     new_df = pd.DataFrame(columns=peak_df.columns)
 
     junc_type = []
@@ -364,6 +424,11 @@ def compare_peak_junc_df(peak_df, junc_df, organism = None):
                             ann_coords.append((junc_row['annotated intron start'],junc_row['annotated intron end']))
                             new_df = new_df.append(row)
                         break                   
+<<<<<<< HEAD
+=======
+    print "Overlap:"
+    print match_count
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     
     new_df['junction type'] = junc_type
     new_df['junction sequence1'] = seq1
@@ -385,6 +450,11 @@ def peak_seq_enrichment(df, organism):
     
     unpeaks = df[df['type'] == 'other']
     unpeaks = unpeaks.append(df[df['type'] == 'intronic'])
+<<<<<<< HEAD
+=======
+    print "Number of unpredicted peaks:"
+    print len(unpeaks)
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     nucs = ['G','A','C','T']
     dinucs = set()
     for nuc in nucs:
@@ -433,4 +503,127 @@ def peak_seq_enrichment(df, organism):
     ax.set_title('Unpredicted peaks', fontsize=14)
     ax.legend(fontsize=12)
     
+<<<<<<< HEAD
     return fig
+=======
+    return fig
+
+def add_intron_size(peaks_df, gff3, organism=None):
+    ss_dict, flag = SP.list_splice_sites(gff3, organism=organism)
+    ss_dict = SP.collapse_ss_dict(ss_dict)
+    no_peaks = ss_dict
+    intron_sizes = []
+    for index, row in peaks_df.iterrows():
+        if row['type'] != 'intronic':
+            intron_sizes.append(np.NaN)
+        else:
+            sites = ss_dict[row['transcript']]
+            assigned=False
+            for pair in sites:
+                if pair[0] > pair[1]:
+                    if row['position'] >= pair[1] and row['position'] <= pair[0]:
+                        intron_sizes.append(pair[0]-pair[1])
+                        assigned=True
+                        no_peaks[row['transcript']].remove(pair)
+                        break
+                else:
+                    if row['position'] >= pair[0] and row['position'] <= pair[1]:
+                        intron_sizes.append(pair[1]-pair[0])
+                        assigned=True
+                        no_peaks[row['transcript']].remove(pair)
+                        break
+            if assigned is False:
+                intron_sizes.append(np.NaN)
+    peaks_df['intron size'] = intron_sizes
+    return peaks_df,  no_peaks
+
+
+def count_reads_at_peaks(A_bam_list, totals_list, peak_df, B_bam_list=None, B_totals_list=None, gff3=None):
+    '''Function to compare peak heights (or intermediate levels) between two genotypes give a set of peaks
+    
+    Parameters
+    ----------
+    A_bam_list : list
+            bam files from cleavage profiling samples, [Mut, Mut, WT, WT]
+    totals_list : list
+            floats of total million aligned reads in each sample, [Mut, Mut, WT, WT]
+    peak_df : pandas.DataFrame
+            peak_df from SP_pipeline
+    B_bam_list : list, default ``None``
+            bam files from total spliceosome samples, [Mut, Mut, WT, WT]
+            provide if calculating intermediate level rather than just peak heights.
+    B_totals_list : list, default ``None``
+            floats of total million aligned reads in each B sample, [Mut, Mut, WT, WT]
+    gff3 : str, default ``None``
+            provide if using B samples to calculate intermediate level
+    
+    Returns
+    -------
+    ratio_df : pandas.DataFrame
+            dataframe with ratios and Z scores compared between samples'''
+    
+    A_bams = []
+    for bam_file in A_bam_list:
+        A_bams.append(pysam.Samfile(bam_file))
+
+    #Count reads in transcript from B samples if provided
+    if B_bam_list is not None:
+        B_bams = []
+        tx_dict = SPPeaks.build_transcript_dict(gff3)
+        for bam_file in B_bam_list:
+            B_bams.append(pysam.Samfile(bam_file))   
+    
+    #Count reads a peaks in dataframe
+    all_counts = {}
+    names = []
+    n=0
+    for n in range(len(A_bams)):
+        name = A_bam_list[n].split('/')[-1].split('.')[0]
+        names.append(name)
+        print name
+        all_counts[name] = []
+        for ix, r in peak_df.iterrows():
+            peak_count = 0
+            pos = int(r['position'])
+            peak_iter = A_bams[n].fetch(r['chromosome'],  pos-50,  pos+50)
+            for read in peak_iter:
+                if read.is_reverse and r['strand'] == '+':
+                    if read.reference_end == pos:
+                        peak_count += 1
+                elif not read.is_reverse and r['strand'] == '-':
+                    if read.reference_start == pos-1:
+                        peak_count += 1
+            
+            if B_bam_list is None:
+                all_counts[name].append(float(peak_count)/totals_list[n])
+            else:
+                tx_count = 0
+                start = tx_dict[r['transcript']+'T0'][0]
+                end = tx_dict[r['transcript']+'T0'][1]
+                peak_iter = B_bams[n].fetch(r['chromosome'], start, end)
+                for read in peak_iter:
+                    if read.is_reverse and r['strand'] == '+':
+                        tx_count += 1
+                    elif not read.is_reverse and r['strand'] == '-':
+                        tx_count += 1
+                tx_rpkm = float(tx_count)/abs(start-end)/B_totals_list[n]
+                all_counts[name].append((float(peak_count)/totals_list[n])/tx_rpkm)
+    
+    ratio_df = peak_df
+    for k,v in all_counts.iteritems():
+        ratio_df[k] = v
+        ratio_df['log2_'+k] = [np.log2(x) for x in v]
+
+    ratio_df['ratio1'] = ratio_df[names[0]]/ratio_df[names[2]]
+    ratio_df['log_ratio1'] = ratio_df['ratio1'].apply(np.log)
+    ratio_df['log_ratio1'] = ratio_df['log_ratio1'].replace([np.inf, np.inf*-1, np.NaN], 0)
+    ratio_df['ratio2'] = ratio_df[names[1]]/ratio_df[names[3]]
+    ratio_df['log_ratio2'] = ratio_df['ratio2'].apply(np.log)
+    ratio_df['log_ratio2'] = ratio_df['log_ratio2'].replace([np.inf, np.inf*-1, np.NaN], 0)
+    ratio_df['Z1'] = pd.Series(stats.mstats.zscore(ratio_df['log_ratio1']), index=ratio_df.index)
+    ratio_df['Z2'] = pd.Series(stats.mstats.zscore(ratio_df['log_ratio2']), index=ratio_df.index)
+    ratio_df['pvalue1'] = pd.Series(stats.norm.sf(abs(ratio_df['Z1']))*2)
+    ratio_df['pvalue2'] = pd.Series(stats.norm.sf(abs(ratio_df['Z2']))*2)
+    
+    return ratio_df
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867

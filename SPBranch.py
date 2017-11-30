@@ -1,17 +1,34 @@
 import sys
+<<<<<<< HEAD
 import os
 script_path = os.path.dirname(os.path.realpath(__file__)).split('SPTools')[0]
 sys.path.append(script_path)
 import SPTools as SP
+=======
+sys.path.insert(0, '/home/jordan/CodeBase/RNA-is-awesome/')
+sys.path.insert(0, '/Users/jordanburke/CodeBase/RNA-is-awesome/')
+
+import GeneUtility
+import SPTools as SP
+
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 import numpy as np
 import pandas as pd
 import json
 import HTSeq
 import itertools
+<<<<<<< HEAD
 from subprocess import call
 from multiprocessing import Pool
 from functools import partial
 
+=======
+
+from subprocess import call
+from multiprocessing import Pool
+from functools import partial
+import os
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 from itertools import izip,islice,tee
 import re
 
@@ -257,7 +274,11 @@ def list_branch_points(sorted_bam_file, gff3_file, fasta_dict, organism=None):
                     branch_dict[transcript][splice_site].append(read_end)
                     br_counter += 1
                 
+<<<<<<< HEAD
     print "\n Unaligned reads analyzed: "+str(read_counter)
+=======
+    print "Reads analyzed: "+str(read_counter)
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     print "Reads assigned as branches: "+str(br_counter)
     
     new_branch_dict = {}
@@ -303,120 +324,9 @@ def list_branch_points(sorted_bam_file, gff3_file, fasta_dict, organism=None):
                         fout.write(line)
     
     return new_branch_dict
-    
-#############################################################################
-## Tools for creating a dataframe with branches found by above method      ##
-#############################################################################
-
-def create_branch_df(branch_dict, gff3, fa_dict, organism=None):
-    tx_dict = SP.build_transcript_dict(gff3, organism=organism)
-    chroms = []
-    fives = []
-    transcripts = []
-    branches = []
-    depths = []
-    strands = []
-    distances = []
-    for tx, five_sites in branch_dict.iteritems():
-        for five_site in five_sites:
-            chrom = five_site[0].split(':')[0]
-            pos = int(five_site[0].split(':')[1])
-            n=0
-            for n in range(len(five_site[1])):
-                if abs(five_site[1][n]-pos) > 5 and abs(five_site[1][n]-pos) <= 1000 and five_site[2][n] >= 5:
-                    chroms.append(chrom)
-                    fives.append(pos)
-                    transcripts.append(tx)
-                    branches.append(five_site[1][n])
-                    depths.append(five_site[2][n])
-                    strands.append(tx_dict[tx][2])
-                    if tx_dict[tx][2] == '+':
-                        distances.append(five_site[1][n]-pos)
-                    elif tx_dict[tx][2] == '-':
-                        distances.append(pos-five_site[1][n])
-    branch_df = pd.DataFrame(index = range(len(fives)))
-    branch_df['transcript'] = transcripts
-    branch_df['chromosome'] = chroms
-    branch_df['5p splice site'] = fives
-    branch_df['branch site'] = branches
-    branch_df['depth'] = depths
-    branch_df['distance'] = distances
-    branch_df['strand'] = strands
-    
-    branch_df = branch_df[branch_df['distance'] > 0]
-    branch_df['genome coord'] = branch_df['chromosome'].str.cat(branch_df['5p splice site'].apply(int).apply(str), sep=':')
-    branch_df['branch coord'] = branch_df['chromosome'].str.cat(branch_df['branch site'].apply(int).apply(str), sep=':')
-    
-    branch_df = add_seq(branch_df, fa_dict)
-    branch_df = find_3p_site(branch_df, gff3, organism=organism)
-    return branch_df
-
-def add_seq(branch_df, fa_dict):
-    five_seqs = []
-    branch_seqs = []
-    for ix, r in branch_df.iterrows():
-        five = fa_dict[r['chromosome']][r['5p splice site']-8:r['5p splice site']+8]
-        branch = fa_dict[r['chromosome']][r['branch site']-8:r['branch site']+8]
-        if r['strand'] == '-':
-            five = SP.reverse_complement(five)
-            branch = SP.reverse_complement(branch)
-        if 'GT' in five[4:11]:
-            ix = five.index('GT')
-            five = five[ix-2:ix+6]
-        else:
-            five = five[4:12]
-        if 'AG' in branch[4:11]:
-            ix = branch.index('AG')
-            branch = branch[ix-4:ix+4]
-        elif 'AA' in branch[4:11]:
-            ix = branch.index('AA')
-            branch = branch[ix-4:ix+4]
-        elif 'GA' in branch[4:11]:
-            ix = branch.index('GA')
-            branch = branch[ix-4:ix+4]
-        else:
-            branch = branch[4:13]
-        five_seqs.append(five)
-        branch_seqs.append(branch)
-    branch_df['5p seq'] = five_seqs
-    branch_df['Branch seq'] = branch_seqs
-    
-    receptors = ['AG', 'AA', 'GA']
-    branch_df = branch_df[branch_df['Branch seq'].str[4:6].isin(receptors)]
-    return branch_df
-
-def list_alt_branch(branch_df, organism=None):
-    alt_branches = []
-    for five_site in set(branch_df['genome coord']):
-        five_df = branch_df[branch_df['genome coord'] == five_site]
-        if len(five_df) > 1:
-            alt_branches.append(five_site)
-    return alt_branches
-
-def find_3p_site(branch_df, gff3, organism=None):
-    ss_dict, flag = SP.list_splice_sites(gff3, organism=organism)
-    ss_dict = SP.collapse_ss_dict(ss_dict)
-    
-    three_coord = []
-    for ix, r in branch_df.iterrows():
-        introns = ss_dict[r['transcript'][:-2]]
-        matched = False
-        for intron in introns:
-            if r['5p splice site'] in range(intron[0]-1,intron[0]+2):
-                three_coord.append(intron[1])
-                matched = True
-                break
-        if matched is False:
-            three_coord.append(np.NaN)
-    
-    branch_df['3p splice site'] = three_coord
-    branch_df['intron size'] = branch_df['5p splice site']-branch_df['3p splice site']
-    branch_df['intron size'] = branch_df['intron size'].apply(abs)
-    branch_df['Branch to 3p distance'] = branch_df['branch site']-branch_df['3p splice site']
-    branch_df['Branch to 3p distance'] = branch_df['Branch to 3p distance'].apply(abs)
-    
-    return branch_df
-
+<<<<<<< HEAD
+=======
+            
 ###################################
 ##  Script for finding branches  ##
 ###################################
@@ -506,6 +416,227 @@ def main():
 
         samtools3 = 'samtools index Peak_branches_sorted.bam'
         call(samtools3, shell=True)
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
+    
+#############################################################################
+## Tools for creating a dataframe with branches found by above method      ##
+#############################################################################
+
+def create_branch_df(branch_dict, gff3, fa_dict, organism=None):
+    tx_dict = SP.build_transcript_dict(gff3, organism=organism)
+    chroms = []
+    fives = []
+    transcripts = []
+    branches = []
+    depths = []
+    strands = []
+    distances = []
+    for tx, five_sites in branch_dict.iteritems():
+        for five_site in five_sites:
+            chrom = five_site[0].split(':')[0]
+            pos = int(five_site[0].split(':')[1])
+            n=0
+            for n in range(len(five_site[1])):
+                if abs(five_site[1][n]-pos) > 5 and abs(five_site[1][n]-pos) <= 1000 and five_site[2][n] >= 5:
+                    chroms.append(chrom)
+                    fives.append(pos)
+                    transcripts.append(tx)
+                    branches.append(five_site[1][n])
+                    depths.append(five_site[2][n])
+                    strands.append(tx_dict[tx][2])
+                    if tx_dict[tx][2] == '+':
+                        distances.append(five_site[1][n]-pos)
+                    elif tx_dict[tx][2] == '-':
+                        distances.append(pos-five_site[1][n])
+    branch_df = pd.DataFrame(index = range(len(fives)))
+    branch_df['transcript'] = transcripts
+    branch_df['chromosome'] = chroms
+    branch_df['5p splice site'] = fives
+    branch_df['branch site'] = branches
+    branch_df['depth'] = depths
+    branch_df['distance'] = distances
+    branch_df['strand'] = strands
+    
+    branch_df = branch_df[branch_df['distance'] > 0]
+    branch_df['genome coord'] = branch_df['chromosome'].str.cat(branch_df['5p splice site'].apply(int).apply(str), sep=':')
+    branch_df['branch coord'] = branch_df['chromosome'].str.cat(branch_df['branch site'].apply(int).apply(str), sep=':')
+    
+    branch_df = add_seq(branch_df, fa_dict)
+    branch_df = find_3p_site(branch_df, gff3, organism=organism)
+    return branch_df
+
+def add_seq(branch_df, fa_dict):
+    five_seqs = []
+    branch_seqs = []
+    for ix, r in branch_df.iterrows():
+        five = fa_dict[r['chromosome']][r['5p splice site']-8:r['5p splice site']+8]
+        branch = fa_dict[r['chromosome']][r['branch site']-8:r['branch site']+8]
+        if r['strand'] == '-':
+            five = SP.reverse_complement(five)
+            branch = SP.reverse_complement(branch)
+        if 'GT' in five[4:11]:
+            ix = five.index('GT')
+            five = five[ix-2:ix+6]
+        else:
+            five = five[4:12]
+        if 'AG' in branch[4:11]:
+            ix = branch.index('AG')
+            branch = branch[ix-4:ix+4]
+        elif 'AA' in branch[4:11]:
+            ix = branch.index('AA')
+            branch = branch[ix-4:ix+4]
+        elif 'GA' in branch[4:11]:
+            ix = branch.index('GA')
+            branch = branch[ix-4:ix+4]
+        else:
+            branch = branch[4:13]
+        five_seqs.append(five)
+        branch_seqs.append(branch)
+    branch_df['5p seq'] = five_seqs
+    branch_df['Branch seq'] = branch_seqs
+    
+    receptors = ['AG', 'AA', 'GA']
+    branch_df = branch_df[branch_df['Branch seq'].str[4:6].isin(receptors)]
+    return branch_df
+
+def list_alt_branch(branch_df, organism=None):
+    alt_branches = []
+    for five_site in set(branch_df['genome coord']):
+        five_df = branch_df[branch_df['genome coord'] == five_site]
+        if len(five_df) > 1:
+            alt_branches.append(five_site)
+<<<<<<< HEAD
+=======
+    print len(alt_branches)
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
+    return alt_branches
+
+def find_3p_site(branch_df, gff3, organism=None):
+    ss_dict, flag = SP.list_splice_sites(gff3, organism=organism)
+    ss_dict = SP.collapse_ss_dict(ss_dict)
+    
+    three_coord = []
+    for ix, r in branch_df.iterrows():
+        introns = ss_dict[r['transcript'][:-2]]
+        matched = False
+        for intron in introns:
+            if r['5p splice site'] in range(intron[0]-1,intron[0]+2):
+                three_coord.append(intron[1])
+                matched = True
+                break
+        if matched is False:
+            three_coord.append(np.NaN)
+    
+    branch_df['3p splice site'] = three_coord
+    branch_df['intron size'] = branch_df['5p splice site']-branch_df['3p splice site']
+    branch_df['intron size'] = branch_df['intron size'].apply(abs)
+    branch_df['Branch to 3p distance'] = branch_df['branch site']-branch_df['3p splice site']
+    branch_df['Branch to 3p distance'] = branch_df['Branch to 3p distance'].apply(abs)
+    
+    return branch_df
+
+<<<<<<< HEAD
+###################################
+##  Script for finding branches  ##
+###################################
+    
+def main():
+    '''Usage: run SPBranch.py unmapped1 unmapped2 threads organism [config_file] [untagged]
+    
+    Parameters
+    -----------
+    unmapped1 : bam or fastq file of unmapped reads from tophat or bowtie
+    unmapped2 : bam or fastq file of unmapped reads from tophat or bowtie
+    threads : number of processors to use
+    organism : 'pombe or 'crypto'
+    config_file : if using peaks to call - list of changepoint output file names and where to find them
+    untagged : untagged sample name (must be in file name)
+    
+    Output
+    ------
+    bam files with aligned reads. Will be interpreted by SP_pipeline.
+    '''
+    
+    unmapped1 = sys.argv[1]
+    unmapped2 = sys.argv[2]
+    threads = int(sys.argv[3])
+    
+    if unmapped1.endswith('bam'):
+        btf_args = 'bamToFastq -i {0} -fq {1}'.format(unmapped1, unmapped1.split('.bam')[-1]+'.fq')
+        call(btf_args, shell=False)
+        unmapped1 = unmapped1.split('.bam')[-1]+'.fq'
+    if unmapped2.endswith('bam'):
+        btf_args = 'bamToFastq -i {0} -fq {1}'.format(unmapped2, unmapped2.split('.bam')[-1]+'.fq')
+        call(btf_args, shell=False)
+        unmapped2 = unmapped2.split('.bam')[-1]+'.fq'
+        
+    cat_args = 'cat {0} {1} > unmapped_all.fq'.format(unmapped1, unmapped2)
+    call(cat_args, shell=True)
+    
+    organism = sys.argv[4]
+    organism, gff3, fa_dict, bowtie_index = SP.find_organism_files(organism)
+        
+    peaks = False
+    if len(sys.argv) == 7:
+        peaks = True
+        with open(sys.argv[5], 'r') as config:
+            for line in config:
+                if sys.argv[6] in line:
+                    CP_untagged = line.strip()
+                elif 'changepoint' in line.lower() or 'peak' in line.lower():
+                    CP_out.append(line.strip())
+        peak_df = SP.peak_to_seq_pipeline(CP_untagged, CP_out[0], CP_out[1], gff3, fa_dict, name='CP_peaks')
+
+    ann_seqs = collect_intron_seq(gff3, fa_dict)
+    
+    print "Finding unaligned reads with annotated 5' splice sites"
+    find_split_reads('unmapped_all.fq', ann_seqs, 'Ann_branches', threads=threads)
+    
+    print "Aligning split reads to the genome with Bowtie"
+    bowtie_args = 'bowtie -p{0} -v1 -M1 --best {1} -f Ann_branches_split.fa --sam Ann_branches.sam'.format(threads, bowtie_index)
+    call(bowtie_args, shell=True)
+    
+    # sort and index
+    print "Sorting and indexing bam file"
+    samtools1 = 'samtools view -Sbo Ann_branches.bam Ann_branches.sam'
+    call(samtools1, shell=True)
+    
+    samtools2 = 'samtools sort Ann_branches.bam -o Ann_branches_sorted.bam'
+    call(samtools2, shell=True)
+    
+    samtools3 = 'samtools index Ann_branches_sorted.bam'
+    call(samtools3, shell=True)
+    
+    if peaks is True:
+        print "Finding unaligned reads with unpredicted splicing events"
+        peak_seqs = collect_intron_seq(gff3, fa_dict, peak_df=peak_df)
+        find_split_reads('Ann_branches_unsplit.fa', peak_seqs, 'Peak_branches', threads=threads)
+        
+        print "Aligning split reads to the genome with Bowtie"
+        bowtie_args = 'bowtie -p{0} -v1 -M1 --best {1} -f Peak_branches_split.fa --sam Peak_branches.sam'.format(threads, bowtie_index)
+        call(bowtie_args, shell=True)
+        
+        print "Sorting and indexing bam file"
+        samtools1 = 'samtools view -Sbo Peak_branches.bam Peak_branches.sam'
+        call(samtools1, shell=True)
+
+        samtools2 = 'samtools sort Peak_branches.bam -o Peak_branches_sorted.bam'
+        call(samtools2, shell=True)
+
+        samtools3 = 'samtools index Peak_branches_sorted.bam'
+        call(samtools3, shell=True)
+=======
+def write_seq_list_to_file(df, prefix):
+    with open('{0}_5pseq_list.txt'.format(prefix),'w') as f:
+        for seq in df['5p sequence'].tolist():
+            f.write(seq+'\n')
+    with open('{0}_3pseq_list.txt'.format(prefix),'w') as f:
+        for seq in df['3p sequence'].tolist():
+            f.write(seq+'\n')
+    with open('{0}_BPseq_list.txt'.format(prefix),'w') as f:
+        for seq in df['Branch sequence'].tolist():
+            f.write(seq+'\n')
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 
 if __name__ == "__main__":
     main()

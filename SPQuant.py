@@ -1,13 +1,19 @@
 import sys
+<<<<<<< HEAD
 import os
 script_path = os.path.dirname(os.path.realpath(__file__)).split('SPTools')[0]
 sys.path.append(script_path)
+=======
+sys.path.append('/home/jordan/CodeBase/RNA-is-awesome')
+sys.path.append('/home/jordan/RNA-is-awesome')
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 import SPTools as SP
 import pandas as pd
 import numpy as np
 import pysam
 import copy
 from scipy import stats
+<<<<<<< HEAD
 from matplotlib import pyplot as plt
 
 def make_quant_df(junc_df, branch_df, gff3, fa_dict, organism=None):
@@ -128,6 +134,11 @@ def make_quant_df(junc_df, branch_df, gff3, fa_dict, organism=None):
     return new_quant_df, lariat_df
 
 
+=======
+import seaborn as sns
+from matplotlib import pyplot as plt
+
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 def backfill_splice_sites(df, gff3, fa_dict, PSSM, organism=None):
     tx_dict = SP.build_transcript_dict(gff3, organism=organism)
     ss_dict, flag = SP.list_splice_sites(gff3, organism=organism)
@@ -256,6 +267,127 @@ def backfill_splice_sites(df, gff3, fa_dict, PSSM, organism=None):
     
     return new_df
 
+<<<<<<< HEAD
+=======
+def make_quant_df(junc_df, branch_df, gff3, fa_dict, organism=None):
+    pssm = SP.generate_consensus_matrix(gff3, fa_dict, PSSM=True)
+        
+    quant_df = junc_df[(junc_df['type'] != '3prime') & (junc_df['looks like'] != 'AG')]
+    
+    new_intron_size = []
+    alt_splice = []
+    score_3 = []
+    score_5 = []
+    seq5 = []
+    seq3 = []
+
+    new_quant_df = pd.DataFrame(index=set(quant_df.index), columns=['intron size','alt splicing'])
+    for coord in new_quant_df.index:
+        coord_df = quant_df[quant_df.index == coord]
+
+        #Determine if multiple junctions come from this peak
+        if len(coord_df) > 1: alt_splice.append(True)
+        else: alt_splice.append(False)
+
+        if max(coord_df['annotated intron size']) > 0:
+            coord_df = coord_df.sort_values('annotated intron size', ascending=False)
+            new_intron_size.append(coord_df.ix[0]['annotated intron size']/1000.)
+            seq5.append(coord_df.ix[0]['junction sequence1'])
+            seq3.append(coord_df.ix[0]['junction sequence2'])
+            score_3.append(coord_df.ix[0]['annotated 3p score'])
+            score_5.append(coord_df.ix[0]['annotated 5p score'])
+            
+        else:
+            coord_df = coord_df.sort_values('junction size', ascending=False)
+            new_intron_size.append(coord_df.ix[0]['junction size']/1000.)
+            seq5.append(coord_df.ix[0]['junction sequence1'])
+            seq3.append(coord_df.ix[0]['junction sequence2'])
+            scores = SP.simple_score_junction(coord_df.ix[0]['junction sequence1'], coord_df.ix[0]['junction sequence2'], pssm)
+            score_3.append(scores[1])
+            score_5.append(scores[0])
+            
+    new_quant_df['intron size'] = new_intron_size
+    new_quant_df['alt splicing'] = alt_splice
+    new_quant_df['5p score'] = score_5
+    new_quant_df['3p score'] = score_3
+    new_quant_df['seq5'] = seq5
+    new_quant_df['seq3'] = seq3
+
+    quant_df = quant_df.sort_values('annotated intron size')
+    quant_df = quant_df.reset_index(drop=True).drop_duplicates(subset='genome coord', keep='first').set_index('genome coord')
+
+    new_quant_df = new_quant_df.merge(quant_df[['transcript','chromosome','position','strand','type']], right_index=True, left_index=True)
+    
+    for coord in set(branch_df['genome coord']):
+        if coord not in new_quant_df.index:
+            coord_df = branch_df[branch_df['genome coord'] == coord]
+            coord_df = coord_df.sort_values('depth')
+            best = coord_df.iloc[0]
+            coord_dict = {'transcript':best['transcript'][:-2], 
+                         'chromosome':best['chromosome'],
+                         'position':best['5p splice site'],
+                         'strand':best['strand'],
+                         'type':best['type'],
+                         'intron size':best['intron size'],
+                         'alt splicing':np.where(len(coord_df)> 1, True, False),
+                         '5p score':np.NaN,
+                         '3p score':np.NaN,
+                         'seq5':'','seq3':''}
+
+            
+            if len(best['5p seq']) > 0:
+                coord_dict['seq5'] = best['5p seq']
+            else:
+                if best['strand'] == '+':
+                    coord_dict['seq5'] = fa_dict[best['chromosome']][(int(best['5p splice site'])-1):(int(best['5p splice site'])+7)]
+                elif best['strand'] == '-':
+                    coord_dict['seq5'] = fa_dict[best['chromosome']][(int(best['5p splice site'])-6):(int(best['5p splice site'])+2)]
+                    coord_dict['seq5'] = SP.reverse_complement(coord_dict['seq5'])
+                    
+            if str(best['3p splice site']) != 'nan':
+                three_site = best['3p splice site']
+            else:
+                if best['strand'] == '+':
+                    after_branch = fa_dict[best['chromosome']][best['branch site']:best['branch site']+100]
+                elif best['strand'] == '-':
+                    after_branch = fa_dict[best['chromosome']][best['branch site']-100:best['branch site']]
+                    after_branch = SP.reverse_complement(after_branch)
+                for subs in ['TAG','CAG','GAG','AAG']:
+                    if subs in after_branch:
+                        ix = after_branch.find(subs)+3
+                        break
+                three_site = best['branch site']+ix
+                if best['strand'] == '-':
+                    three_site = best['branch site']-ix
+                coord_dict['intron size'] = abs(coord_dict['position']-three_site)
+            
+            if best['strand'] == '+':
+                coord_dict['seq3'] = fa_dict[best['chromosome']][int(three_site-5):int(three_site)+3]
+            elif best['strand'] == '-':
+                coord_dict['seq3'] = fa_dict[best['chromosome']][int(three_site)-2:int(three_site)+6]
+                coord_dict['seq3'] = SP.reverse_complement(coord_dict['seq3'])
+                    
+            coord_dict['5p score'], coord_dict['3p score'] = SP.simple_score_junction(coord_dict['seq5'], coord_dict['seq3'], pssm)
+            coord_s = pd.Series(coord_dict, name=coord)
+            new_quant_df = new_quant_df.append(coord_s)
+    
+    new_quant_df = backfill_splice_sites(new_quant_df, gff3, fa_dict, pssm, organism=organism)
+    
+    for n in range(len(new_quant_df['seq5'].iloc[0])):     
+        new_quant_df['Base 5-'+str(n)] = [x[n] for x in new_quant_df['seq5']]
+    for n in range(len(new_quant_df['seq3'].iloc[0])):
+        new_quant_df['Base 3-'+str(n)] = [x[n] for x in new_quant_df['seq3']]
+    new_quant_df = new_quant_df.drop(['seq5','seq3'], axis=1)
+    
+    lariat_df = junc_df[(junc_df['type'] == '3prime') | (junc_df['looks like'] == 'AG')]
+    lariat_df = lariat_df.sort_values(['genome coord','annotated intron size'], ascending=False)
+    lariat_df = lariat_df.reset_index(drop=True).drop_duplicates(subset='genome coord', keep='first').set_index('genome coord')
+    lariat_df = lariat_df[['transcript','chromosome','position','strand','type']]
+    
+    return new_quant_df, lariat_df
+
+
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 def quant_from_peak_df(peak_df, gff3, fa_dict, organism=None):
     count1 = 0
     count2 = 0
@@ -325,7 +457,17 @@ def quant_from_peak_df(peak_df, gff3, fa_dict, organism=None):
     new_quant_df = new_quant_df.drop_duplicates(subset='genome coord', keep='first').set_index('genome coord')
     
     new_quant_df = SP.backfill_splice_sites(new_quant_df, gff3, fa_dict, pssm, organism=organism)
+<<<<<<< HEAD
 
+=======
+    
+    #for n in range(len(new_quant_df['seq5'].iloc[0])):     
+    #    new_quant_df['Base 5-'+str(n)] = [x[n] for x in new_quant_df['seq5']]
+    #for n in range(len(new_quant_df['seq3'].iloc[0])):
+    #    new_quant_df['Base 3-'+str(n)] = [x[n] for x in new_quant_df['seq3']]
+    #new_quant_df = new_quant_df.drop(['seq5','seq3'], axis=1)
+    
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     new_quant_df = SP.find_score_branches_ppy(new_quant_df, '/home/jordan/GENOMES/S288C/S288C_branches2.txt', fa_dict)
     
     return new_quant_df
@@ -564,12 +706,15 @@ def config_mut_quant(config_file):
             bam_dict[genotype][sample] = info[0]
     return bam_dict
 
+<<<<<<< HEAD
 def s_log2(s):
     s = pd.to_numeric(s)
     s = s.apply(np.log2)
     s = s.replace([np.inf,-1*np.inf],np.NaN)
     return s
 
+=======
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 def main():
     '''Each line will be : bam_file,genotype,sample
     e.g. CM763-A_sorted.bam,WT,A1'''
@@ -592,8 +737,15 @@ def main():
     organism, gff3, fa_dict, bowtie_index = SP.find_organism_files(organism)
     
     columns = ['5p score','exon size (us)','exon size (ds)','introns in transcript','type','transcript size','intron size',
+<<<<<<< HEAD
                'chromosome','position','alt splicing','3p score','transcript','intron position','strand','peak','branch score',
                'branch to 3p distance','percent pPy']
+=======
+               'chromosome','position','alt splicing','3p score','transcript','intron position','strand','peak',
+               'Base 5-0','Base 5-1','Base 5-2','Base 5-3','Base 5-4','Base 5-5','Base 5-6','Base 5-7','Base 3-0',
+               'Base 3-1','Base 3-2','Base 3-3','Base 3-4','Base 3-5','Base 3-6','Base 3-7','branch score',
+               'branch to 3p distance','percent pPy','branch-0','branch-1','branch-2','branch-3','branch-4']
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
     
     quant_df = pd.read_csv(sys.argv[2], index_col=0)
     try:
@@ -629,6 +781,141 @@ def main():
     final_df.to_pickle(prefix+'_quant_df.pickle')
         
     SP.SP_quant_scatters(final_df.dropna(how='any'), bam_dict, W=W)
+<<<<<<< HEAD
+=======
+    
+def s_log2(s):
+    s = pd.to_numeric(s)
+    s = s.apply(np.log2)
+    s = s.replace([np.inf,-1*np.inf],np.NaN)
+    return s
+
+def s_log2_ratio_Zscore(s1,s2):
+    s = s2/s1
+    s = s_log2(s)
+    s = s.replace([np.inf,-1*np.inf],np.NaN).dropna()
+    pd.Series(stats.mstats.zscore(s), index=s.index)
+    return s   
+
+def log2_Zscore_df(df, wt, mut, metrics=['Intermediate Level', 'Precursor'], Z=2, by_pos_scores=False):
+    if type(df) == str:
+        new_df = pd.read_pickle(df)
+    else:
+        new_df = copy.deepcopy(df)
+        
+    print len(new_df)
+    mutA = [x for x in new_df.columns if (x[0] == mut) and (x[1][-2:] == '-A')]
+    #wtA = [x for x in new_df.columns if (x[0] == wt) and (x[1][-2:] == '-A')]
+    new_df = new_df[new_df[mutA].sum(axis=1) >= 10]
+    print len(new_df)
+    
+    for metric in metrics:
+        columns = [x for x in new_df.columns if (metric in x[1]) and ('avg' not in x[1])]
+        wt_cols = [x for x in columns if (x[0] == wt) and ('avg' not in x[1])]
+        mut_cols = [x for x in columns if (x[0] == mut) and ('avg' not in x[1])]
+        
+        for column in columns:
+            new_df[(column[0], column[1]+' log2')] = s_log2(new_df[column])
+            
+        if len(wt_cols) != len(mut_cols):
+            print "Number of WT reps must match number of mutant reps!"
+            print wt_cols
+            print mut_cols
+            return None
+        
+        for n, wt_col in enumerate(wt_cols):
+            new_df[('All',metric+' log2 ratio'+str(n+1))] = s_log2(new_df[mut_cols[n]]/new_df[wt_col])
+            new_index = [x+'-'+str(n) for x in new_df.index]
+            
+            wt_s = new_df[wt_col]
+            wt_s.index = new_index
+            mut_s = new_df[mut_cols[n]]
+            mut_s.index = new_index
+            
+            if n == 0:
+                wt_s_for_Z = wt_s
+                mut_s_for_Z = mut_s
+            else:
+                wt_s_for_Z = wt_s_for_Z.append(wt_s)
+                mut_s_for_Z = mut_s_for_Z.append(mut_s)
+            
+        Zlist = s_log2_ratio_Zscore(wt_s_for_Z.dropna(), mut_s_for_Z.dropna())
+        
+        for n, wt_col in enumerate(wt_cols):
+            n_up = Zlist[(Zlist.index.str[-1] == str(n)) & (Zlist >= Z)]
+            n_up = [x[:-2] for x in n_up.index]
+            
+            n_down = Zlist[(Zlist.index.str[-1] == str(n)) & (Zlist <= -1*Z)]
+            n_down = [x[:-2] for x in n_down.index]
+            
+            n_other = Zlist[(Zlist.index.str[-1] == str(n)) & (Zlist < Z) & (Zlist > -1*Z)]
+            n_other = [x[:-2] for x in n_other.index]
+            
+            if n == 0:
+                up = set(n_up)
+                down = set(n_down)
+                other = set(n_other)
+            
+            else:
+                up = up.intersection(n_up)
+                up = up.difference(n_down).difference(n_other)
+                down = down.intersection(n_down)
+                down = down.difference(n_up).difference(n_other)
+                other = other.intersection(n_other)
+                other = other.difference(n_up).difference(n_down)
+        
+            print len(up)
+            print len(down)
+        
+        new_df[('All',metric+' change')] = None
+        new_df.loc[up, ('All',metric+' change')] = 'Up'
+        new_df.loc[down, ('All',metric+' change')] = 'Down'
+        new_df.loc[other, ('All', metric+' change')] = 'Other'
+        
+        plot_df = copy.deepcopy(new_df)
+        
+        fig, ax = plt.subplots(ncols=2, nrows=2, figsize=(8,8))
+        groups = {'Other':'0.8','Up':'tomato','Down':'cornflowerblue'}
+        for group in ['Other','Up','Down']:
+            gr_df = plot_df[plot_df[('All',metric+' change')] == group]
+            if len(gr_df) >= 15:
+                for n, wt_col in enumerate(wt_cols):
+                    ax[0][n].scatter(s_log2(gr_df[wt_col]), s_log2(gr_df[mut_cols[n]]), 
+                                color=groups[group], alpha=0.9, label=group, s=20)
+
+                    ax[0][n].set_xlabel(wt_col[0]+' log2 '+metric, fontsize=12)
+                    ax[0][n].set_ylabel(mut_cols[n][0]+' log2 '+metric, fontsize=12)
+                    ax[0][n].set_title('Replicate '+str(n+1), fontsize=14)
+
+                    ax[0][n], limits = SP.draw_diagonal(ax[0][n])
+                    ax[0][n].legend(fontsize=12)
+
+                sns.kdeplot(gr_df[('Peaks','intron size')], ax=ax[1][0], bw=2, cumulative=True, linewidth=3, 
+                            color=groups[group], label=group)
+                ax[1][0].set_xlim([30, 400])
+
+                sns.kdeplot(gr_df[('Peaks','5p score')], ax=ax[1][1], bw=2, cumulative=True, linewidth=3, 
+                            color=groups[group], label=group)
+
+                ax[1][0].set_xlabel('Intron size (nt)')
+                ax[1][0].set_ylabel('Fraction of introns')
+                ax[1][1].set_xlabel('5prime splice site score')
+                ax[1][1].set_ylabel('Fraction of introns')
+        
+        ax[1][1].set_xlim([np.percentile(plot_df[('Peaks','5p score')], 0.5),
+                              np.percentile(plot_df[('Peaks','5p score')], 99.9)+5])
+            
+        fig.tight_layout()
+        plt.show()
+        plt.clf()
+
+    if by_pos_scores is True:
+        SP.by_pos_plots(new_df, metrics=metrics)
+    
+    new_df[('Peaks','predicted')] = True
+    new_df.loc[~new_df[('Peaks','type')].str.contains('prime'), ('Peaks','predicted')] = False    
+    return new_df
+>>>>>>> edd5695cc38a09be4af52c89cf58014da1de5867
 
 if __name__ == "__main__":
     main()
