@@ -1,0 +1,7 @@
+pandas==0.18.1
+numpy==1.11.1
+scipy==0.18.0
+matplotlib==2.0.0b3
+pysam==0.12
+HTSeq==0.6.1p1
+rpy2==2.7.0
