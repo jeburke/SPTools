@@ -1,6 +1,7 @@
 import sys
-sys.path.append('/home/jordan/CodeBase/RNA-is-awesome')
-sys.path.append('/home/jordan/RNA-is-awesome')
+import os
+script_path = os.path.dirname(os.path.realpath(__file__)).split('SPTools')[0]
+sys.path.append(script_path)
 import SPTools as SP
 import pandas as pd
 import numpy as np
@@ -142,7 +143,6 @@ def build_junction_dict(junction_bed, gff3_file, transcript_dict, organism=None)
                         print jct_transcript
                         print jct_type
 
-    print str(unassigned_count)+' junctions not assigned to transcripts'
     return junction_dict
 
 def build_junction_df(junction_bed, gff3_file, fasta, organism=None):

@@ -252,9 +252,7 @@ def collapse_ss_dict(splice_site_dict):
 
 def find_organism_files(organism):
     ''' usage: organism, gff3, fa_dict, bowtie_index = find_organism_files(organism)'''
-    
-    script_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-    print script_path
+    script_path = os.path.dirname(os.path.realpath(__file__))
     if 'crypto' in organism:
         gff3 = script_path+'/Genomes/CNA3_all_transcripts.gff3'
         fa = script_path+'/Genomes/H99_fa.json'

@@ -1,4 +1,4 @@
-from .SPTables import *
+#from .SPTables import *
 from .SPPlots import *
 from .SPPeaks import *
 from .SPScores import *
@@ -6,4 +6,5 @@ from .SPJunctions import *
 from .SPTranscripts import *
 from .SPBranch import *
 from .SPQuant import *
-from .SP_pipeline import *
+#from .SP_pipeline import *
+from .ChangePoint import *
