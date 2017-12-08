@@ -108,6 +108,12 @@ def log_ratio_heatmap(df, all_df, wt_name, mut_name, metrics = ['Precursor','Int
     new_df = copy.deepcopy(df)
     print len(new_df)
     
+    for metric in metrics:
+        wt_cols = [x for x in new_df.columns if x[0] == wt_name and metric in x[1] and 'avg' not in x[1]]
+        mut_cols = [x for x in new_df.columns if x[0] == mut_name and metric in x[1] and 'avg' not in x[1]]
+        for n, wt_col in enumerate(wt_cols):
+            new_df[('All',metric+' log2 ratio'+str(n+1))] = (new_df[mut_cols[n]]/new_df[wt_col]).apply(np.log2)
+    
     # Filter dataframe for peaks with at least 5 reads in intermediate level and precursor
     filt_cols = [x for x in new_df.columns if ('-A' in x[1]) and (x[0] == 'WT')]
     filt_cols = filt_cols + [x for x in new_df.columns if ('near peak' in x[1]) and (x[0] == 'WT')]
@@ -119,11 +125,11 @@ def log_ratio_heatmap(df, all_df, wt_name, mut_name, metrics = ['Precursor','Int
     new_df = new_df[new_df.index.isin(new_ix)]
     for metric in metrics:
         new_df[('All',metric+' avg')] = new_df[('All',metric+' log2 ratio1')]+new_df[('All',metric+' log2 ratio2')].divide(2.)
-    print len(new_df)
 
     columns = [x for x in new_df.columns if (x[0] == 'All') & ('change' not in x[1])]
     new_df = new_df[columns]
-    new_df = new_df.dropna(how='any')
+    new_df = new_df.replace([np.inf, np.inf*-1], np.NaN).dropna(how='any')
+    print len(new_df)
 
     # Get min/max for heatmap
     min_max = []
@@ -194,7 +200,7 @@ def log_ratio_heatmap(df, all_df, wt_name, mut_name, metrics = ['Precursor','Int
                 pop_obs = len(all_df[~all_df.index.isin(cluster_df.index)])
                 pop_prop = float(pop_count)/pop_obs
                 z, p = proportion.proportions_ztest(count, nobs, value=pop_prop, alternative='larger')
-                if nobs/float(count) > pop_prop:
+                if count == 0 or nobs/float(count) > pop_prop:
                     all_p.loc[index, x_var] = -1*np.log10(p)
                 else:
                     all_p.loc[index, x_var] = np.log10(p)
